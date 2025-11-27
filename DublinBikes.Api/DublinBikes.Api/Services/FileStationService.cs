@@ -1,23 +1,48 @@
-﻿using DublinBikes.Api.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using DublinBikes.Api.Dtos;
+using DublinBikes.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
-using System;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
 
 namespace DublinBikes.Api.Services
 {
     public class FileStationService : IStationService
     {
-        private readonly List<Station> _stations;
         private readonly Random _random = new();
+        private readonly List<Station> _stations;
         private readonly IMemoryCache _cache;
 
+        [ActivatorUtilitiesConstructor]
+        public FileStationService(IConfiguration configuration, IMemoryCache cache)
+        {
+            _cache = cache;
+
+            var jsonPath = Path.Combine(AppContext.BaseDirectory, "Data", "dublinbike.json");
+            var json = File.ReadAllText(jsonPath);
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var stations = JsonSerializer.Deserialize<List<Station>>(json, options)
+                           ?? new List<Station>();
+
+            _stations = stations;
+        }
 
         public FileStationService(IEnumerable<Station> stations, IMemoryCache cache)
         {
-            _stations = stations.ToList();
             _cache = cache;
+            _stations = stations.ToList();
         }
+
 
         public FileStationService(IWebHostEnvironment env, IMemoryCache cache)
         {

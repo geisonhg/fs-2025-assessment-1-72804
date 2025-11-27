@@ -1,6 +1,7 @@
-using DublinBikes.Api.Services;
 using DublinBikes.Api.Dtos;
+using DublinBikes.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 
 
@@ -8,8 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddMemoryCache();
 
-// uploud the service to the DI container and keep it as a singleton
-builder.Services.AddSingleton<IStationService, FileStationService>();
+builder.Services.AddSingleton<IStationService>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var cache = sp.GetRequiredService<IMemoryCache>();
+
+    return new FileStationService(config, cache); 
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -76,7 +82,24 @@ app.MapPut("/api/v1/stations/{number:int}",
         return Results.Ok(updated);
     });
 
+var isTesting = app.Environment.IsEnvironment("Testing");
 
+if (!isTesting)
+{
+app.UseHttpsRedirection();
+}
 
+// swagger, etc...
+if (app.Environment.IsDevelopment() || isTesting)
+{
+app.UseSwagger();
+app.UseSwaggerUI();
+}
+
+// =================== endpoints v1 / v2 ===================
 
 app.Run();
+
+// to WebApplicationFactory<Program>
+public partial class Program { }
+

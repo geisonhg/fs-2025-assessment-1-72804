@@ -20,6 +20,7 @@ C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBik
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\DublinBikes.Api.csproj.CoreCompileInputs.cache
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\DublinBikes.Api.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\DublinBikes.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\DublinBikes.Api.sourcelink.json
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
