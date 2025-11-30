@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DublinBikes.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd33739c84c86691ab7cb9f189b6ab99e734153a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a2a385fa16a3f4fe85296dfb27ec2e2f983a4fae")]
 [assembly: System.Reflection.AssemblyProductAttribute("DublinBikes.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DublinBikes.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

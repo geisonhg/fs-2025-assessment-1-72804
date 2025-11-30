@@ -2,47 +2,42 @@
 using DublinBikes.Api.Models;
 using DublinBikes.Api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Microsoft.Azure.Cosmos;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ====== Servicios básicos ======
 builder.Services.AddMemoryCache();
 
-builder.Services.AddSingleton<IStationService>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var cache = sp.GetRequiredService<IMemoryCache>();
-
-    // Servicio V1 basado en archivo JSON
-    return new FileStationService(config, cache);
-});
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<StationUpdateBackgroundService>();
 
-// ====== Cosmos (V2) ======
+// ====== V1: servicio basado en archivo JSON ======
+builder.Services.AddSingleton<IStationService>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    return new FileStationService(config, cache);
+});
 
-// 1. Opciones de Cosmos desde appsettings.json -> sección "Cosmos"
+// ====== V2: Cosmos ======
 builder.Services.Configure<CosmosOptions>(
     builder.Configuration.GetSection("Cosmos"));
 
-// 2. Cliente de Cosmos como singleton
 builder.Services.AddSingleton<CosmosClient>(sp =>
 {
-    var cosmosOptions = sp.GetRequiredService<IOptions<CosmosOptions>>().Value;
-    return new CosmosClient(cosmosOptions.Endpoint, cosmosOptions.Key);
+    var options = sp.GetRequiredService<IOptions<CosmosOptions>>().Value;
+    return new CosmosClient(options.Endpoint, options.Key);
 });
 
-// 3. Servicio V2 que usará CosmosClient (ahora mismo puede ser un stub)
 builder.Services.AddSingleton<CosmosStationService>();
 
 var app = builder.Build();
 
-// ¿estamos en modo tests?
+// ====== Middleware ======
 var isTesting = app.Environment.IsEnvironment("Testing");
 
 if (!isTesting)
@@ -50,16 +45,16 @@ if (!isTesting)
     app.UseHttpsRedirection();
 }
 
-// swagger, etc...
 if (app.Environment.IsDevelopment() || isTesting)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// =================== endpoints v1 ===================
+// ====== ENDPOINTS V1 (archivo) ======
+var v1 = app.MapGroup("/api/v1");
 
-app.MapGet("/api/v1/stations",
+v1.MapGet("/stations",
     ([AsParameters] StationQueryParameters query,
      IStationService stationService) =>
     {
@@ -67,25 +62,24 @@ app.MapGet("/api/v1/stations",
         return Results.Ok(result);
     });
 
-app.MapGet("/api/v1/stations/{number:int}",
+v1.MapGet("/stations/{number:int}",
     (int number, IStationService stationService) =>
     {
         var station = stationService.GetStationDtoByNumber(number);
         return station is null ? Results.NotFound() : Results.Ok(station);
     });
 
-app.MapGet("/api/v1/stations/summary",
+v1.MapGet("/stations/summary",
     (IStationService stationService) =>
     {
         var summary = stationService.GetSummary();
         return Results.Ok(summary);
     });
 
-app.MapPost("/api/v1/stations",
+v1.MapPost("/stations",
     (StationUpsertDto request, IStationService stationService) =>
     {
         var created = stationService.CreateStation(request);
-
         if (created is null)
         {
             return Results.Conflict(new { message = "A station with this number already exists." });
@@ -95,11 +89,10 @@ app.MapPost("/api/v1/stations",
         return Results.Created(url, created);
     });
 
-app.MapPut("/api/v1/stations/{number:int}",
+v1.MapPut("/stations/{number:int}",
     (int number, StationUpsertDto request, IStationService stationService) =>
     {
         var updated = stationService.UpdateStation(number, request);
-
         if (updated is null)
         {
             return Results.NotFound(new { message = "Station not found." });
@@ -108,9 +101,57 @@ app.MapPut("/api/v1/stations/{number:int}",
         return Results.Ok(updated);
     });
 
-// =================== run ===================
+// ====== ENDPOINTS V2 (Cosmos) ======
+var v2 = app.MapGroup("/api/v2");
+
+v2.MapGet("/stations",
+    ([AsParameters] StationQueryParameters query,
+     CosmosStationService stationService) =>
+    {
+        var result = stationService.GetStations(query);
+        return Results.Ok(result);
+    });
+
+v2.MapGet("/stations/{number:int}",
+    (int number, CosmosStationService stationService) =>
+    {
+        var station = stationService.GetStationDtoByNumber(number);
+        return station is null ? Results.NotFound() : Results.Ok(station);
+    });
+
+v2.MapGet("/stations/summary",
+    (CosmosStationService stationService) =>
+    {
+        var summary = stationService.GetSummary();
+        return Results.Ok(summary);
+    });
+
+v2.MapPost("/stations",
+    (StationUpsertDto request, CosmosStationService stationService) =>
+    {
+        var created = stationService.CreateStation(request);
+        if (created is null)
+        {
+            return Results.Conflict(new { message = "A station with this number already exists." });
+        }
+
+        var url = $"/api/v2/stations/{created.Number}";
+        return Results.Created(url, created);
+    });
+
+v2.MapPut("/stations/{number:int}",
+    (int number, StationUpsertDto request, CosmosStationService stationService) =>
+    {
+        var updated = stationService.UpdateStation(number, request);
+        if (updated is null)
+        {
+            return Results.NotFound(new { message = "Station not found." });
+        }
+
+        return Results.Ok(updated);
+    });
 
 app.Run();
 
-// Necesario para los tests de integración
+// to WebApplicationFactory<Program>
 public partial class Program { }
