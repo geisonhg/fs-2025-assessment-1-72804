@@ -1,56 +1,37 @@
-# DublinBikes API – .NET 8 Web API
+# Dublin Bikes API – Full Stack Assignment
 
-Full Stack Assignment 1 – JSON-backed API for Dublin Bikes.
+This project is my solution for the Full Stack 2025 assessment.  
+The goal is to build a REST API for Dublin Bikes stations, with two versions:
 
-This project implements a .NET 8 Web API that:
+- **V1**: reads data from a local JSON file.
+- **V2**: reads and writes data using **Azure Cosmos DB**.
 
-- Loads the provided `dublinbike.json` file at startup.
-- Exposes versioned endpoints under `/api/v1/...`.
-- Supports searching, filtering, sorting and paging.
-- Exposes summary/aggregate information about all stations.
-- Uses an in-memory cache so that query results are cached for 5 minutes.
-- Runs a background service that simulates live updates of station availability.
-- Includes unit tests for the service layer.
-
-> **Note:** Version 2 (`/api/v2/...`) will reuse the same endpoint shapes but load data from Azure CosmosDB instead of the local JSON file.
+The API is built with **.NET 8 Minimal APIs**.
 
 ---
 
-## 1. Technology stack
+## Project structure
 
-- **.NET**: .NET 8
-- **API style**: Minimal APIs
-- **Language**: C#
-- **Testing**: xUnit
-- **Caching**: `IMemoryCache`
-- **Background processing**: `BackgroundService` (`StationUpdateBackgroundService`)
+Main projects:
 
-Project structure:
+- `DublinBikes.Api` – Minimal API, endpoints, services.
+- `DublinBikes.Tests` – xUnit tests for the service and the API.
 
-- `DublinBikes.Api` – Web API project
-  - `Data/dublinbike.json` – source JSON for the stations
-  - `Models` – domain models (`Station`, `GeoPosition`, ...)
-  - `Dtos` – DTOs (`StationDto`, `StationUpsertDto`, `StationsSummaryDto`, `PagedResult<T>`, ...)
-  - `Services` – service layer (`FileStationService`, `IStationService`, `StationUpdateBackgroundService`, ...)
-  - `Program.cs` – minimal API endpoint configuration and DI setup
-- `DublinBikes.Tests` – xUnit test project
-  - `StationTestData` – sample in-memory data for tests
-  - `StationServiceTests` – unit tests for filtering/sorting/paging
+Main services:
+
+- `FileStationService` (V1) – uses `dublinbike.json` file.
+- `CosmosStationService` (V2) – uses Azure Cosmos DB.
+
+Background service:
+
+- `StationUpdateBackgroundService` – periodically updates station data in memory.
 
 ---
 
-## 2. How to run the API
+## How to run the API
 
-### Prerequisites
+From the solution root:
 
-- .NET 8 SDK installed
-- Visual Studio 2022 (or VS Code) with .NET 8 support
-
-### Steps
-
-1. Clone the repository and switch to the correct branch:
-
-   ```bash
-   git clone https://github.com/<your-user>/fs-2025-assessment-1-72804.git
-   cd fs-2025-assessment-1-72804
-   git checkout feature/dublin-bikes-v1
+```bash
+dotnet build
+dotnet run --project DublinBikes.Api
