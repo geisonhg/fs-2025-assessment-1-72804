@@ -1,0 +1,59 @@
+﻿@page "/stations"
+@using DublinBikes.Api.Dtos
+@using DublinBikes.Api.Models
+@using DublinBikes.Blazor.Services
+@inject StationsApiClient StationsClient
+
+<h3>Stations</h3>
+
+@if (_isLoading)
+{
+    <p>Loading stations...</p>
+}
+else if (_errorMessage is not null)
+{
+    <p style="color:red">@_errorMessage</p>
+}
+else if (_stations is null || _stations.Items.Count == 0)
+{
+    <p>No stations found.</p>
+}
+else
+{
+    <ul>
+        @foreach (var s in _stations.Items)
+        {
+            <li>@s.Number - @s.Name (@s.AvailableBikes / @s.BikeStands)</li>
+        }
+    </ul>
+}
+
+@code {
+    private PagedResult<StationDto>? _stations;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var query = new StationQueryParameters
+            {
+                Page = 1,
+                PageSize = 20,
+                Sort = "name",
+                Dir = "asc"
+            };
+
+            _stations = await StationsClient.GetStationsAsync(query);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,3 @@
+C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\geiso\source\repos\fs-2025-assessment-1-72804\DublinBikes.Api\DublinBikes.Api\obj\Debug\net8.0\staticwebassets.build.json
