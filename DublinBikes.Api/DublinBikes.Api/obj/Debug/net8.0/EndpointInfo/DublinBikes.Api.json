@@ -308,6 +308,18 @@
           }
         }
       }
+    },
+    "/admin/import-to-cosmos": {
+      "post": {
+        "tags": [
+          "DublinBikes.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {

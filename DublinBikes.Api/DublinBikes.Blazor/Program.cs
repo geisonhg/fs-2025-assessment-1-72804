@@ -9,7 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
-                 ?? "https://localhost:7232"; // fallback
+                 ?? "https://localhost:7205"; // fallback
 
 builder.Services.AddHttpClient<StationsApiClient>(client =>
 {

@@ -1,59 +1,310 @@
 ﻿@page "/stations"
-@using DublinBikes.Api.Dtos
-@using DublinBikes.Api.Models
 @using DublinBikes.Blazor.Services
-@inject StationsApiClient StationsClient
+@inject StationsApiClient Api
 
-<h3>Stations</h3>
+<h1>Stations (v2)</h1>
 
-@if (_isLoading)
+<div class="mb-3">
+    <div class="d-flex flex-wrap gap-2 align-items-end">
+
+        <div>
+            <label class="form-label">Search (name or address)</label>
+            <input class="form-control"
+                   @bind="query.Q"
+                   @bind:event="oninput"
+                   placeholder="Type to search..." />
+        </div>
+
+        <div>
+            <label class="form-label">Status</label>
+            <select class="form-select" @bind="query.Status">
+                <option value="ALL">All</option>
+                <option value="OPEN">Open</option>
+                <option value="CLOSED">Closed</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Min available bikes</label>
+            <input type="number" class="form-control"
+                   @bind="minBikesText"
+                   @bind:event="oninput" />
+        </div>
+
+        <div>
+            <label class="form-label">Sort by</label>
+            <select class="form-select" @bind="query.Sort">
+                <option value="name">Name</option>
+                <option value="availablebikes">Available bikes</option>
+                <option value="occupancy">Occupancy</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Direction</label>
+            <select class="form-select" @bind="query.Dir">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+        </div>
+
+        <!-- APPLY -->
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="OnApplyClick">
+            Apply
+        </button>
+
+        <!-- RESET -->
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="ResetFilters">
+            Reset
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (isLoading)
 {
     <p>Loading stations...</p>
 }
-else if (_errorMessage is not null)
+else if (stations.Count == 0)
 {
-    <p style="color:red">@_errorMessage</p>
-}
-else if (_stations is null || _stations.Items.Count == 0)
-{
-    <p>No stations found.</p>
+    <p>No stations match your filters.</p>
 }
 else
 {
-    <ul>
-        @foreach (var s in _stations.Items)
-        {
-            <li>@s.Number - @s.Name (@s.AvailableBikes / @s.BikeStands)</li>
-        }
-    </ul>
+    <div class="row">
+        <div class="col-lg-8">
+            <table class="table table-hover table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Number</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th class="text-end">Available / Stands</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in stations)
+                    {
+                        <tr class="@(selectedStation?.Number == s.Number ? "table-active" : "")"
+                            style="cursor:pointer"
+                            @onclick="() => SelectStation(s)">
+                            <td>@s.Number</td>
+                            <td>@s.Name</td>
+                            <td>@s.Address</td>
+                            <td class="text-end">@s.AvailableBikes / @s.BikeStands</td>
+                            <td>
+                                <span class="badge @(s.Status == "OPEN" ? "bg-success" : "bg-secondary")">
+                                    @s.Status
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                    Page @resultPage of @resultTotalPages
+                    (@totalCount stations)
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary"
+                            disabled="@(query.Page <= 1)"
+                            @onclick="PrevPage">
+                        Previous
+                    </button>
+                    <button class="btn btn-outline-secondary"
+                            disabled="@(query.Page >= resultTotalPages)"
+                            @onclick="NextPage">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            @if (selectedStation is null)
+            {
+                <p>Select a station to see details.</p>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">@selectedStation.Name</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">@selectedStation.Address</h6>
+
+                        <p>
+                            <span class="badge @(selectedStation.Status == "OPEN" ? "bg-success" : "bg-secondary")">
+                                @selectedStation.Status
+                            </span>
+                        </p>
+
+                        <p>
+                            Stands: <strong>@selectedStation.BikeStands</strong><br />
+                            Available bikes: <strong>@selectedStation.AvailableBikes</strong><br />
+                            Available stands:
+                            <strong>@(selectedStation.BikeStands - selectedStation.AvailableBikes)</strong>
+                        </p>
+
+                        <div class="mb-2">
+                            <label class="form-label">Occupancy</label>
+                            <div class="progress" role="progressbar"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 aria-valuenow="@OccupancyPercent(selectedStation)">
+                                <div class="progress-bar"
+                                     style="width:@OccupancyPercent(selectedStation)%">
+                                    @OccupancyPercent(selectedStation)%
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-muted small">
+                            Last update:
+                            @selectedStation.LastUpdateLocal.LocalDateTime.ToString("g")
+                        </p>
+
+                        <p class="small">
+                            Lat: @selectedStation.Lat<br />
+                            Lng: @selectedStation.Lng
+                        </p>
+
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="@GoogleMapsUrl(selectedStation)"
+                           target="_blank">
+                            Open in Google Maps
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
 }
 
 @code {
-    private PagedResult<StationDto>? _stations;
-    private bool _isLoading = true;
-    private string? _errorMessage;
+    private readonly StationsQuery query = new();
+    private readonly List<StationDto> stations = new();
+
+    private StationDto? selectedStation;
+    private bool isLoading;
+    private string? errorMessage;
+
+    private int resultPage;
+    private int resultTotalPages;
+    private int totalCount;
+
+    // Helper binding for nullable MinBikes
+    private string? minBikesText
+    {
+        get => query.MinBikes?.ToString();
+        set
+        {
+            if (int.TryParse(value, out var v))
+                query.MinBikes = v;
+            else
+                query.MinBikes = null;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadStationsAsync();
+    }
+
+    private async Task LoadStationsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
         try
         {
-            var query = new StationQueryParameters
-            {
-                Page = 1,
-                PageSize = 20,
-                Sort = "name",
-                Dir = "asc"
-            };
+            var result = await Api.GetStationsAsync(query);
 
-            _stations = await StationsClient.GetStationsAsync(query);
+            stations.Clear();
+            stations.AddRange(result.Items);
+
+            resultPage = result.Page;
+            resultTotalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+
+            // Mantener selección si aún existe en la página
+            if (selectedStation is not null)
+            {
+                selectedStation = stations.FirstOrDefault(s => s.Number == selectedStation.Number);
+            }
         }
         catch (Exception ex)
         {
-            _errorMessage = ex.Message;
+            errorMessage = "Could not load stations from the API.";
+            Console.WriteLine(ex);
         }
         finally
         {
-            _isLoading = false;
+            isLoading = false;
+        }
+    }
+
+    // Se llama al pulsar Apply
+    private async Task OnApplyClick()
+    {
+        query.Page = 1;
+        await LoadStationsAsync();
+    }
+
+    private async Task ResetFilters()
+    {
+        query.Q = string.Empty;
+        query.Status = "ALL";
+        query.MinBikes = null;
+        query.Sort = "name";
+        query.Dir = "asc";
+        query.Page = 1;
+
+        minBikesText = string.Empty;
+
+        await LoadStationsAsync();
+    }
+
+    private void SelectStation(StationDto station)
+    {
+        selectedStation = station;
+    }
+
+    private int OccupancyPercent(StationDto s)
+    {
+        var pct = (int)Math.Round(s.Occupancy * 100);
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        return pct;
+    }
+
+    private string GoogleMapsUrl(StationDto s)
+        => $"https://www.google.com/maps?q={s.Lat},{s.Lng}";
+
+    private async Task PrevPage()
+    {
+        if (query.Page > 1)
+        {
+            query.Page--;
+            await LoadStationsAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (query.Page < resultTotalPages)
+        {
+            query.Page++;
+            await LoadStationsAsync();
         }
     }
 }

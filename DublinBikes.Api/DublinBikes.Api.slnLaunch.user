@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "DublinBikes.Api\\DublinBikes.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "DublinBikes.Blazor\\DublinBikes.Blazor.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

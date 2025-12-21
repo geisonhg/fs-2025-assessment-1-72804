@@ -59,6 +59,7 @@ namespace DublinBikes.Api.Services
 
         public PagedResult<StationDto> GetStations(StationQueryParameters query)
         {
+            // cache key incluye todos los parámetros para no mezclar resultados
             var cacheKey =
                 $"cosmos-stations-{query.Status}-{query.MinBikes}-{query.Q}-{query.Sort}-{query.Dir}-{query.Page}-{query.PageSize}";
 
@@ -67,20 +68,26 @@ namespace DublinBikes.Api.Services
                 return cached;
             }
 
+            // IQueryable base sobre el contenedor de Cosmos
             IQueryable<Station> q =
                 Container.GetItemLinqQueryable<Station>(allowSynchronousQueryExecution: true);
 
-            // Filters
-            if (!string.IsNullOrWhiteSpace(query.Status))
+            // --------- Filtros ---------
+
+            // Status: ignoramos "ALL" para que no filtre
+            if (!string.IsNullOrWhiteSpace(query.Status) &&
+                !string.Equals(query.Status, "ALL", StringComparison.OrdinalIgnoreCase))
             {
                 q = q.Where(s => s.Status == query.Status);
             }
 
+            // Min available bikes
             if (query.MinBikes.HasValue)
             {
                 q = q.Where(s => s.Available_Bikes >= query.MinBikes.Value);
             }
 
+            // Texto libre: nombre o dirección
             if (!string.IsNullOrWhiteSpace(query.Q))
             {
                 var text = query.Q.ToLower();
@@ -89,23 +96,31 @@ namespace DublinBikes.Api.Services
                     s.Address.ToLower().Contains(text));
             }
 
-            // Sorting
+            // --------- Orden ---------
+
             var dirDesc = string.Equals(query.Dir, "desc", StringComparison.OrdinalIgnoreCase);
 
             q = query.Sort?.ToLower() switch
             {
                 "name" => dirDesc ? q.OrderByDescending(s => s.Name) : q.OrderBy(s => s.Name),
+
                 "availablebikes" or "available_bikes"
-                    => dirDesc ? q.OrderByDescending(s => s.Available_Bikes) : q.OrderBy(s => s.Available_Bikes),
+                    => dirDesc ? q.OrderByDescending(s => s.Available_Bikes)
+                               : q.OrderBy(s => s.Available_Bikes),
+
                 "occupancy" => dirDesc
                     ? q.OrderByDescending(s =>
                         s.Bike_Stands == 0 ? 0 : (double)s.Available_Bikes / s.Bike_Stands)
                     : q.OrderBy(s =>
                         s.Bike_Stands == 0 ? 0 : (double)s.Available_Bikes / s.Bike_Stands),
-                _ => dirDesc ? q.OrderByDescending(s => s.Number) : q.OrderBy(s => s.Number)
+
+                _ => dirDesc ? q.OrderByDescending(s => s.Number)
+                             : q.OrderBy(s => s.Number)
             };
 
-            // Paging (convert nullable ints to concrete values)
+            // --------- Paginación ---------
+
+            // Page y PageSize vienen como int? en StationQueryParameters
             int page = query.Page.GetValueOrDefault(1);
             if (page <= 0) page = 1;
 
@@ -118,7 +133,7 @@ namespace DublinBikes.Api.Services
             var items = q
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
+                .ToList()            // ejecuta la consulta en Cosmos
                 .Select(MapToDto)
                 .ToList();
 
@@ -135,6 +150,7 @@ namespace DublinBikes.Api.Services
 
             return result;
         }
+
 
         // ===== V2: Get single station by number =====
 
@@ -163,13 +179,14 @@ namespace DublinBikes.Api.Services
 
         public StationDto? CreateStation(StationUpsertDto request)
         {
-            // Check if a station with the same number already exists
+            // ¿ya existe una estación con ese número?
             var existing = GetStationDtoByNumber(request.Number);
             if (existing != null)
                 return null;
 
             var station = new Station
             {
+                Id = request.Number.ToString(),            // <-- NUEVO
                 Number = request.Number,
                 Name = request.Name,
                 Address = request.Address,
@@ -193,6 +210,8 @@ namespace DublinBikes.Api.Services
 
             return MapToDto(station);
         }
+
+
 
         // ===== V2: Update =====
 

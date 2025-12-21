@@ -8,14 +8,13 @@ using Microsoft.Azure.Cosmos;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ====== Servicios básicos ======
+// ====== Core services ======
 builder.Services.AddMemoryCache();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<StationUpdateBackgroundService>();
 
-// ====== V1: servicio basado en archivo JSON ======
+// ====== V1: file-based service ======
 builder.Services.AddSingleton<IStationService>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -51,7 +50,7 @@ if (app.Environment.IsDevelopment() || isTesting)
     app.UseSwaggerUI();
 }
 
-// ====== ENDPOINTS V1 (archivo) ======
+// ====== V1 endpoints (file data) ======
 var v1 = app.MapGroup("/api/v1");
 
 v1.MapGet("/stations",
@@ -101,7 +100,7 @@ v1.MapPut("/stations/{number:int}",
         return Results.Ok(updated);
     });
 
-// ====== ENDPOINTS V2 (Cosmos) ======
+// ====== V2 endpoints (Cosmos) ======
 var v2 = app.MapGroup("/api/v2");
 
 v2.MapGet("/stations",
@@ -151,7 +150,45 @@ v2.MapPut("/stations/{number:int}",
         return Results.Ok(updated);
     });
 
+// ====== Admin import to Cosmos (dev / testing only) ======
+if (app.Environment.IsDevelopment() || isTesting)
+{
+    app.MapPost("/admin/import-to-cosmos",
+        async (IStationService fileService, CosmosStationService cosmosService) =>
+        {
+            var allStations = fileService.GetAll();
+            var imported = 0;
+
+            foreach (var s in allStations)
+            {
+                var dto = new StationUpsertDto
+                {
+                    Number = s.Number,
+                    Name = s.Name,
+                    Address = s.Address,
+                    Lat = s.Position?.Lat ?? 0,
+                    Lng = s.Position?.Lng ?? 0,
+                    BikeStands = s.Bike_Stands,
+                    AvailableBikes = s.Available_Bikes,
+                    Status = s.Status
+                };
+
+                var created = cosmosService.CreateStation(dto);
+                if (created is not null)
+                {
+                    imported++;
+                }
+            }
+
+            return Results.Ok(new
+            {
+                imported,
+                totalSource = allStations.Count
+            });
+        });
+}
+
 app.Run();
 
-// to WebApplicationFactory<Program>
+// for WebApplicationFactory<Program> in tests
 public partial class Program { }

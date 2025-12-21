@@ -11,7 +11,7 @@
         "projectName": "DublinBikes.Api",
         "projectPath": "C:\\Users\\geiso\\source\\repos\\fs-2025-assessment-1-72804\\DublinBikes.Api\\DublinBikes.Api\\DublinBikes.Api.csproj",
         "packagesPath": "C:\\Users\\geiso\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\geiso\\Source\\Repos\\fs-2025-assessment-1-72804\\DublinBikes.Api\\DublinBikes.Api\\obj\\",
+        "outputPath": "C:\\Users\\geiso\\source\\repos\\fs-2025-assessment-1-72804\\DublinBikes.Api\\DublinBikes.Api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
